@@ -10,9 +10,12 @@ const middlewares = jsonServer.defaults();
 // /!\ Bind the router db to the app
 server.db = router.db;
 
+// Set a default port if PORT is undefined in the environment
+const PORT = process.env.PORT || 3000;
+
 server.use(middlewares);
 server.use(auth)
 server.use(router);
-server.listen(process.env.PORT, () => {
-  console.log("Welcome to mock API on port " + process.env.PORT);
+server.listen(PORT, () => {
+  console.log("Welcome to mock API on port " + PORT);
 });
