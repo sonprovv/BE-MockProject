@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Argument for port
-ARG PORT=3000
+ARG PORT=8080
 
 # Set environment variable for the port
 ENV PORT=$PORT

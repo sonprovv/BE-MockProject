@@ -359,6 +359,11 @@
       "email": "olivier@mail.com",
       "password": "$2a$10$3OyHnkJgGwUETl4t4htKbenhRrhMaRJvyXDmeMyYv6K281Dsqcjha",
       "id": 1
+    },
+    {
+      "email": "anhtus@mail.com",
+      "password": "$2a$10$E7TfKDAW4lxv6WxZNH/MaeiDnAzG5U6rDYqaoY8OBvJ/WhM0Y80y.",
+      "id": 2
     }
   ]
 }
