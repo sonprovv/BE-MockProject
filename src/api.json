@@ -352,6 +352,11 @@
       "createdAt": "2025-03-13T03:06:37.178Z",
       "name": "Categories 3",
       "id": "3"
+    },
+    {
+      "createdAt": "2025-03-13T20:45:22.296Z",
+      "name": "Categories 1",
+      "id": "5"
     }
   ],
   "users": [
@@ -364,6 +369,11 @@
       "email": "anhtus@mail.com",
       "password": "$2a$10$E7TfKDAW4lxv6WxZNH/MaeiDnAzG5U6rDYqaoY8OBvJ/WhM0Y80y.",
       "id": 2
+    },
+    {
+      "email": "vuanhtu1993@gmail.com",
+      "password": "$2a$10$4BhkcOTlUl5zJxx/F3XA2OdEYszMo9QFUCk6i8LZiDXt/6d/EJzyO",
+      "id": 3
     }
   ],
   "books": [
