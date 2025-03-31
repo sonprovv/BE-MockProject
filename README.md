@@ -45,13 +45,13 @@ To use a different port (e.g., 8082):
 ```bash
 # Update your .env file first with PORT=8082
 # Then run:
-docker-compose up
+docker-compose up -d
 ```
 
 Or specify the port directly:
 
 ```bash
-PORT=8082 docker-compose up
+PORT=8082 docker-compose up -d
 ```
 
 To run in detached mode:
