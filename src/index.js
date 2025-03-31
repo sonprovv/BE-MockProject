@@ -15,7 +15,11 @@ const rules = auth.rewriter({
   users: 600,
   books: 664,
   categories: 664,
-  products: 664
+  products: 664,
+  orders: 664,
+  reviews: 664,
+  coupons: 664,
+  carts: 664
 })
 
 // Set a default port if PORT is undefined in the environment
