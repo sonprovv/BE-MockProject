@@ -158,3 +158,132 @@ json-server supports advanced querying:
 ├── .dockerignore        # Files to ignore in Docker build
 └── package.json         # Node.js dependencies and scripts
 ```
+
+
+## Install Swagger UI Express and Swagger JSDocs
+
+### Step 1: Install Required Packages
+First, we need to install the necessary packages for Swagger documentation:
+
+Run command in terminal
+```javascript
+npm install swagger-ui-express swagger-jsdoc --save
+```
+Installing Swagger UI Express and Swagger JSDoc packages
+
+### Step 2: Create a Swagger Configuration File
+Let's create a separate file to hold our Swagger configuration. This will help keep our main file clean and organized.
+
+Run command in terminal
+```javascript
+mkdir -p src/config
+```
+
+Creating a config directory for Swagger configuration
+### Step 3: Configure Swagger Doc depend on api.json
+Create new folder /src/routes. After that config like this
+```yml
+/**
+ * @swagger
+ * /users:
+ *   get:
+ *     summary: Returns all users
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   email:
+ *                     type: string
+ *                   password:
+ *                     type: string
+ *       401:
+ *         description: Unauthorized
+ * 
+ * /users/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       400:
+ *         description: Invalid input data
+ *
+ * /users/login:
+ *   post:
+ *     summary: User login
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       400:
+ *         description: Invalid credentials
+ *
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: The auto-generated id of the user
+ *         email:
+ *           type: string
+ *           description: The user's email
+ *         password:
+ *           type: string
+ *           description: The user's password (hashed)
+ *     NewUser:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: The user's email
+ *         password:
+ *           type: string
+ *           description: The user's password
+ */
+```
+

@@ -2,6 +2,7 @@ const jsonServer = require("json-server");
 const path = require("path");
 const dotenv = require("dotenv")
 const auth = require("json-server-auth")
+const swaggerDocs = require("./config/swagger");
 dotenv.config()
 
 const server = jsonServer.create();
@@ -28,7 +29,14 @@ const PORT = process.env.PORT || 3000;
 server.use(middlewares);
 server.use(rules)
 server.use(auth)
+
+// Initialize Swagger documentation
+swaggerDocs(server);
+
+// Apply router last to ensure other routes like /api-docs work
 server.use(router);
+
 server.listen(PORT, () => {
   console.log("Welcome to mock API on port " + PORT);
+  console.log(`Swagger documentation is available at http://localhost:${PORT}/api-docs`);
 });
