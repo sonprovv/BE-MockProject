@@ -374,6 +374,26 @@
       "email": "vuanhtu1993@gmail.com",
       "password": "$2a$10$4BhkcOTlUl5zJxx/F3XA2OdEYszMo9QFUCk6i8LZiDXt/6d/EJzyO",
       "id": 3
+    },
+    {
+      "email": "vuanhtu@gmail.com",
+      "password": "$2a$10$hUAwZTremlmkwoJeC7ZLr.6YnKTHibdchVPjpF571g.TkTrmAil56",
+      "confirmPassword": "12345678aA@",
+      "role": "user",
+      "id": 4,
+      "address": "No4 HHT",
+      "birthDay": "",
+      "fullName": "Vu Anh Tu",
+      "gender": "male",
+      "nickName": "",
+      "phone": "0942428693"
+    },
+    {
+      "email": "admin@gmail.com",
+      "password": "$2a$10$.sWh.AkcLwRERI90UdJIX.pWAkv8yRNoREAdC.3CXq3ixRNdm/CU6",
+      "confirmPassword": "12345678aA@",
+      "role": "admin",
+      "id": 5
     }
   ],
   "books": [
