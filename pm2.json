@@ -1,0 +1,9 @@
+{
+    "apps": [
+        {
+            "name": "json-server-with-auth",
+            "script": "npm",
+            "args": "start"
+        }
+    ]
+}
