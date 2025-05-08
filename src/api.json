@@ -3166,5 +3166,7 @@
   "orders": [],
   "reviews": [],
   "coupons": [],
-  "carts": []
+  "carts": [],
+  "service": [],
+  "delivery": []
 }

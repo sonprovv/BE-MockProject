@@ -13,7 +13,7 @@ server.db = router.db;
 
 // Auth middleware
 const rules = auth.rewriter({
-  users: 600,
+  users: 664,
   books: 664,
   categories: 664,
   products: 664,
