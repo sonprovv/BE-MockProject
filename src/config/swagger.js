@@ -1,6 +1,14 @@
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 
+// Get the base URL based on environment
+const getBaseUrl = () => {
+    if (process.env.NODE_ENV === 'production') {
+        return process.env.PRODUCTION_BASE_URL;
+    }
+    return process.env.DEVELOPMENT_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+};
+
 // Swagger definition
 const swaggerOptions = {
     definition: {
@@ -16,13 +24,9 @@ const swaggerOptions = {
         },
         servers: [
             {
-                url: `http://localhost:${process.env.PORT}`,
-                description: 'Development server',
-            },
-            {
-                url: process.env.PRODUCTION_BASE_URL,
-                description: 'Production server',
-            },
+                url: getBaseUrl(),
+                description: `${process.env.NODE_ENV || 'development'} server`,
+            }
         ],
         components: {
             securitySchemes: {
@@ -39,7 +43,6 @@ const swaggerOptions = {
             },
         ],
     },
-    // Updated path to the API docs - only looking in routes directory
     apis: ['./src/routes/*.js'],
 };
 
@@ -57,7 +60,7 @@ const swaggerDocs = (app) => {
         res.send(swaggerSpec);
     });
 
-    console.log('Swagger docs available at /api-docs');
+    console.log(`Swagger docs available at ${getBaseUrl()}/api-docs`);
 };
 
 module.exports = swaggerDocs;

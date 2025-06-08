@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "start:prod": "NODE_ENV=production node src/index.js",
+    "start:prod": "NODE_ENV=production node -r dotenv/config src/index.js dotenv_config_path=.env.production",
     "docker:dev": "docker-compose up",
     "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d",
     "start:pm2": "pm2 start ecosystem.config.js --env production",
