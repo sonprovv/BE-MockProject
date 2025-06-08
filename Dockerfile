@@ -13,14 +13,8 @@ RUN npm install
 # Bundle app source
 COPY . .
 
-# Argument for port
-ARG PORT=8080
-
-# Set environment variable for the port
-ENV PORT=$PORT
-
-# Expose the port the app runs on
-EXPOSE $PORT
+# Expose port from environment variable with fallback
+EXPOSE ${PORT:-3000}
 
 # Command to run the application
 CMD ["npm", "start"]

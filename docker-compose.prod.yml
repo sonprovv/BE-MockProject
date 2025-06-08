@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  api:
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT:-8080}
+    restart: always
+    command: npm run start:prod

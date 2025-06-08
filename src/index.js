@@ -38,5 +38,5 @@ server.use(router);
 
 server.listen(PORT, () => {
   console.log("Welcome to mock API on port " + PORT);
-  console.log(`Swagger documentation is available at http://localhost:${PORT}/api-docs`);
+  console.log(`Swagger documentation is available at /api-docs`);
 });
