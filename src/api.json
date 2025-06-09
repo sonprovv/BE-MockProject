@@ -394,6 +394,13 @@
       "confirmPassword": "12345678aA@",
       "role": "admin",
       "id": 5
+    },
+    {
+      "email": "admin1@gmail.com",
+      "password": "$2a$10$Z5N4nH7Uux428URgnLXsruC6JTzVfKVj3rys4fryVi8pAe25GrKG.",
+      "confirmPassword": "123123",
+      "role": "admin",
+      "id": 6
     }
   ],
   "books": [

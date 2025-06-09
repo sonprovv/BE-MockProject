@@ -13,7 +13,7 @@ server.db = router.db;
 
 // Auth middleware
 const rules = auth.rewriter({
-  users: 664,
+  ers: 664,// Allow users to register and login
   books: 664,
   categories: 664,
   products: 664,
@@ -21,7 +21,7 @@ const rules = auth.rewriter({
   reviews: 664,
   coupons: 664,
   carts: 664
-})
+});
 
 // Set a default port if PORT is undefined in the environment
 const PORT = process.env.PORT || 3000;
