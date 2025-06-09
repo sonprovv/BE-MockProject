@@ -79,16 +79,19 @@ If you can't access the container after changing the port:
 ### Running Locally (without Docker)
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Start the server:
+
 ```bash
 npm start
 ```
 
 For development with hot reload:
+
 ```bash
 npm run dev
 ```
@@ -101,6 +104,7 @@ npm run dev
 - POST `/login` - Login with email and password
 
 Example:
+
 ```json
 // Register
 POST /register
@@ -159,29 +163,36 @@ json-server supports advanced querying:
 └── package.json         # Node.js dependencies and scripts
 ```
 
-
 ## Install Swagger UI Express and Swagger JSDocs
 
 ### Step 1: Install Required Packages
+
 First, we need to install the necessary packages for Swagger documentation:
 
 Run command in terminal
+
 ```javascript
 npm install swagger-ui-express swagger-jsdoc --save
 ```
+
 Installing Swagger UI Express and Swagger JSDoc packages
 
 ### Step 2: Create a Swagger Configuration File
+
 Let's create a separate file to hold our Swagger configuration. This will help keep our main file clean and organized.
 
 Run command in terminal
+
 ```javascript
 mkdir -p src/config
 ```
 
 Creating a config directory for Swagger configuration
+
 ### Step 3: Configure Swagger Doc depend on api.json
+
 Create new folder /src/routes. After that config like this
+
 ```yml
 /**
  * @swagger
@@ -286,4 +297,3 @@ Create new folder /src/routes. After that config like this
  *           description: The user's password
  */
 ```
-

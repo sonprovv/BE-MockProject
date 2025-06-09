@@ -1,5 +1,5 @@
 # Use Node.js LTS (Long Term Support) as the base image
-FROM node:22
+FROM node:18-alpine
 
 # Create app directory inside the container
 WORKDIR /usr/src/app
@@ -13,8 +13,8 @@ RUN npm install
 # Bundle app source
 COPY . .
 
-# Expose port from environment variable with fallback
-EXPOSE ${PORT:-3000}
+# Expose port 3000 by default
+EXPOSE 3000
 
 # Command to run the application
-CMD ["npm", "start"]
+CMD ["npm", "run", "start"]
