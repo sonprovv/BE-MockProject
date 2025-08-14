@@ -1,28 +1,23 @@
 {
   "name": "json-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Mock API server with json-server and json-server-auth",
   "main": "src/index.js",
   "scripts": {
-    "start": "vercel dev",
-    "dev": "node src/index.js",
-    "start:prod": "NODE_ENV=production node -r dotenv/config src/index.js dotenv_config_path=.env.production",
-    "docker:dev": "docker-compose up",
-    "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d",
-    "start:pm2": "pm2 start ecosystem.config.js --env production",
-    "stop:pm2": "pm2 stop json-server-auth",
-    "restart:pm2": "pm2 restart json-server-auth"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "start:prod": "NODE_ENV=production node -r dotenv/config src/index.js dotenv_config_path=.env.production"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
     "json-server": "0.16.1",
     "json-server-auth": "^2.1.0",
-    "nodemon": "2.0.4",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
-    "nodemon": "1.18.4"
+    "nodemon": "2.0.4"
   },
-  "keywords": []
+  "keywords": [],
+  "license": "MIT"
 }
