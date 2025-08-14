@@ -4,8 +4,8 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "vercel dev",
+    "dev": "node src/index.js",
     "start:prod": "NODE_ENV=production node -r dotenv/config src/index.js dotenv_config_path=.env.production",
     "docker:dev": "docker-compose up",
     "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d",
