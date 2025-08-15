@@ -12,6 +12,7 @@ services:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
     volumes:
+      - ./api.json:/app/api.json
       - .:/usr/src/app
       - /usr/src/app/node_modules
     restart: unless-stopped
