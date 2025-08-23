@@ -8,7 +8,12 @@ router.get('/', async (req, res) => {
   try {
     const { userId, status } = req.query;
     const ordersRef = collection(db, 'orders');
-    let q = ordersRef;
+    let q;
+
+    // If no user is authenticated
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
 
     // If not admin, only return user's orders
     if (req.user.role !== 'admin') {
@@ -16,6 +21,9 @@ router.get('/', async (req, res) => {
     } else if (userId) {
       // Admin can filter by user ID
       q = query(ordersRef, where('userId', '==', userId));
+    } else {
+      // Admin without userId filter - get all orders
+      q = ordersRef;
     }
 
     const snapshot = await getDocs(q);
