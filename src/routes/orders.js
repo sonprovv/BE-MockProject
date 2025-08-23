@@ -11,20 +11,20 @@ router.get('/', async (req, res) => {
     let q;
 
     // If no user is authenticated
-    if (!req.user || (!req.user.id && !req.user.sub)) {
-      console.log('No user ID found in JWT token:', req.user);
+    if (!req.user || (!req.user.email)) {
+      console.log('No user email found in JWT token:', req.user);
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const userId = req.user.id || req.user.sub;
-    console.log('User ID from token:', userId);
+    const userEmail = req.user.email;
+    console.log('User email from token:', userEmail);
 
     // If not admin, only return user's orders
     if (req.user.role !== 'admin') {
-      q = query(ordersRef, where('userId', '==', userId));
+      q = query(ordersRef, where('userEmail', '==', userEmail));
     } else if (queryUserId) {
-      // Admin can filter by user ID
-      q = query(ordersRef, where('userId', '==', queryUserId));
+      // Admin can filter by user email
+      q = query(ordersRef, where('userEmail', '==', queryUserId));
     } else {
       // Admin without userId filter - get all orders
       q = ordersRef;
@@ -154,7 +154,7 @@ router.post('/', async (req, res) => {
     
     // Create order
     const newOrder = {
-      userId: req.user.id,
+      userEmail: req.user.email,
       items: validatedItems,
       totalPrice,
       status: 'pending',
@@ -169,7 +169,7 @@ router.post('/', async (req, res) => {
     // Clear user's cart after successful order
     try {
       const cartsRef = collection(db, 'carts');
-      const q = query(cartsRef, where('userId', '==', req.user.id));
+      const q = query(cartsRef, where('userEmail', '==', req.user.email));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
