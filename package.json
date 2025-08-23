@@ -9,6 +9,7 @@
     "start:prod": "NODE_ENV=production node -r dotenv/config src/index.js dotenv_config_path=.env.production"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dotenv": "^16.4.7",
     "json-server": "0.16.1",
     "json-server-auth": "^2.1.0",
