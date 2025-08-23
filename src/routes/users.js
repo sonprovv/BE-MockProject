@@ -177,45 +177,52 @@ router.put('/:id', async (req, res) => {
     
     console.log('Prepared update data:', JSON.stringify(updateData, null, 2));
     
-    console.log('Final update data:', JSON.stringify(updateData, null, 2));
-    
-    console.log('Attempting to update with data:', JSON.stringify(updateData, null, 2));
-    
     try {
       console.log('Attempting to update document with ID:', userId);
       console.log('Update data being sent to Firebase:', updateData);
       
-      // First, get the current document to ensure it exists
+      // Get the current document to ensure it exists
       const currentDoc = await getDoc(userRef);
       if (!currentDoc.exists()) {
         console.error('Document does not exist:', userId);
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ 
+          success: false,
+          error: 'User not found' 
+        });
       }
       
-      // Perform the update
-      await updateDoc(userRef, updateData);
+      // Log the current document data
+      console.log('Current document data:', currentDoc.data());
+      
+      // Perform the update using setDoc with merge: true
+      // This will create the document if it doesn't exist, or merge with existing data if it does
+      await setDoc(userRef, updateData, { merge: true });
       console.log('Successfully updated user in Firebase');
       
-      // Verify the update
+      // Verify the update by getting the document again
       const updatedDoc = await getDoc(userRef);
       if (!updatedDoc.exists()) {
         console.error('Failed to verify update - document not found after update');
-        return res.status(500).json({ error: 'Failed to verify update' });
+        return res.status(500).json({ 
+          success: false,
+          error: 'Failed to verify update' 
+        });
       }
       
-      const updatedData = updatedDoc.data();
-      console.log('Successfully verified update. New data:', JSON.stringify(updatedData, null, 2));
-      
       const updatedUser = updatedDoc.data();
-      console.log('Updated user data:', JSON.stringify(updatedUser, null, 2));
+      console.log('Successfully verified update. New data:', JSON.stringify(updatedUser, null, 2));
       
-      // Don't send password hash in response
+      // Don't send sensitive data in response
       delete updatedUser.password;
       
+      // Return the updated user data
       res.json({ 
         success: true,
         message: 'User updated successfully',
-        user: { id: userId, ...updatedUser } 
+        user: { 
+          id: userId, 
+          ...updatedUser 
+        } 
       });
     } catch (updateError) {
       console.error('Firebase update error:', updateError);
