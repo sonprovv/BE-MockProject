@@ -2,6 +2,7 @@ const jsonServer = require("json-server");
 const path = require("path");
 const dotenv = require("dotenv");
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
 dotenv.config();
 
@@ -75,7 +76,7 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
-// Custom login route
+// Custom login route with bcrypt password comparison
 server.post('/login', async (req, res) => {
   console.log('=== LOGIN REQUEST ===');
   const { email, password } = req.body;
@@ -91,8 +92,23 @@ server.post('/login', async (req, res) => {
   
   console.log('User found:', { id: user.id, email: user.email, role: user.role });
   
-  // Simple password check (for development)
-  const passwordValid = user.password === password;
+  // Sửa: Dùng bcrypt.compare để so sánh password hash
+  let passwordValid = false;
+  try {
+    // Kiểm tra xem password trong DB có phải hash không
+    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$')) {
+      // Password đã hash, dùng bcrypt.compare
+      passwordValid = await bcrypt.compare(password, user.password);
+      console.log('🔐 Using bcrypt comparison for hashed password');
+    } else {
+      // Password plain text (fallback cho development)
+      passwordValid = user.password === password;
+      console.log('⚠️  Using plain text comparison (development mode)');
+    }
+  } catch (error) {
+    console.log('❌ Password comparison error:', error.message);
+    passwordValid = false;
+  }
   
   if (!passwordValid) {
     console.log('❌ Password invalid');
@@ -118,15 +134,15 @@ server.post('/login', async (req, res) => {
     user: {
       id: user.id,
       email: user.email,
-      name: user.name,
+      fullname: user.fullName,
       role: user.role
     }
   });
 });
 
-// Custom register route
+// Custom register route with bcrypt password hashing
 server.post('/register', async (req, res) => {
-  const { email, password, name, role = 'user' } = req.body;
+  const { email, password, fullname, role = 'user' } = req.body;
   
   const db = router.db;
   const existingUser = db.get('users').find({ email }).value();
@@ -135,12 +151,26 @@ server.post('/register', async (req, res) => {
     return res.status(400).json({ message: 'User already exists' });
   }
   
+  // Hash password trước khi lưu
+  const hashedPassword = await bcrypt.hash(password, 10);
+  
   const newUser = {
     id: Date.now(),
     email,
-    password, // In production, hash this
-    name,
+    password: hashedPassword, // Lưu password đã hash
+    fullname,
     role,
+    nickName: "",
+    birthDay: "",
+    birthDate: {
+      day: "",
+      month: "",
+      year: ""
+    },
+    gender: "",
+    nationality: "",
+    phone: "",
+    address: "",
     createdAt: new Date().toISOString()
   };
   
@@ -343,26 +373,28 @@ const initializeDatabase = () => {
     db.set('carts', []).write();
   }
   
-  // Create test users
+  // Create test users with hashed passwords
   if (!db.has('users').value() || db.get('users').value().length === 0) {
-    db.set('users', [
+    // Hash passwords for test users
+    const testUsers = [
       {
         id: 1,
         email: 'test@example.com',
-        password: '123456',
+        password: '$2a$10$3OyHnkJgGwUETl4t4htKbenhRrhMaRJvyXDmeMyYv6K281Dsqcjha', // hash của '123456'
         name: 'Test User',
         role: 'user'
       },
       {
-        id: 9, // Match the user ID from token
-        email: 'haha@gmail.com',
-        password: '123123',
-        name: 'Haha User',
-        role: 'user'
+        id: 2,
+        email: 'admin@gmail.com',
+        password: '$2a$10$.sWh.AkcLwRERI90UdJIX.pWAkv8yRNoREAdC.3CXq3ixRNdm/CU6', // hash của '12345678aA@'
+        name: 'Admin User',
+        role: 'admin'
       }
-    ]).write();
+    ];
     
-    console.log('✅ Test users created');
+    db.set('users', testUsers).write();
+    console.log('✅ Test users created with hashed passwords');
   }
 };
 
@@ -371,17 +403,4 @@ server.listen(PORT, () => {
   console.log(`📝 JWT Secret: ${JWT_SECRET}`);
   
   initializeDatabase();
-  
-  console.log('\n📋 Available endpoints:');
-  console.log('- POST /login');
-  console.log('- POST /register');
-  console.log('- GET  /cart (auth required)');
-  console.log('- POST /cart/items (auth required)');
-  console.log('- PUT  /cart/items/:id (auth required)');
-  console.log('- DELETE /cart/items/:id (auth required)');
-  console.log('- GET  /debug/token');
-  
-  console.log('\n👤 Test users:');
-  console.log('- haha@gmail.com / 123123');
-  console.log('- test@example.com / 123456');
 });
