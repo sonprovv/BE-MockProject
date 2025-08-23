@@ -94,33 +94,45 @@ router.put('/:id', async (req, res) => {
     const userId = req.params.id;
     const { fullname, email, role } = req.body;
     
+    // Get the user document to check email
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userData = userDoc.data();
+    
     // Only allow users to update their own profile or admin to update any profile
     const currentUserId = req.user.id || req.user.sub;
-    if (currentUserId !== userId && req.user.role !== 'admin') {
+    const currentUserEmail = req.user.email;
+    
+    // Check if current user is the owner of the profile or an admin
+    if (currentUserId !== userId && 
+        currentUserEmail !== userData.email && 
+        req.user.role !== 'admin') {
       console.log('User not authorized to update this profile:', { 
         currentUserId, 
         targetUserId: userId, 
         isAdmin: req.user.role === 'admin' 
       });
-      return res.status(403).json({ error: 'Not authorized to update this user' });
+      return res.status(403).json({ 
+        error: 'Not authorized to update this profile',
+        currentUserId,
+        currentUserEmail,
+        targetUserId: userId,
+        targetUserEmail: userData.email
+      });
     }
     
     const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    
-    if (!userSnap.exists()) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const updatedUser = {
-      ...userSnap.data(),
-      fullname: fullname || userSnap.data().fullname,
-      email: email || userSnap.data().email,
-      role: req.user.role === 'admin' ? (role || userSnap.data().role) : userSnap.data().role,
-      updated_at: new Date().toISOString()
-    };
-    
-    await updateDoc(userRef, updatedUser);
+    await updateDoc(userRef, {
+      fullname: fullname || userData.fullname,
+      email: email || userData.email,
+      ...(req.user.role === 'admin' && role ? { role } : {}), // Only allow admin to update role
+      updatedAt: new Date().toISOString()
+    });
+
+    const updatedUser = (await getDoc(userRef)).data();
     
     // Don't send password hash in response
     delete updatedUser.password;
