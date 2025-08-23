@@ -1,7 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase-config');
-const { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where } = require('firebase/firestore');
+const { 
+  collection, 
+  getDocs, 
+  doc, 
+  getDoc, 
+  updateDoc, 
+  setDoc, 
+  deleteDoc, 
+  query, 
+  where 
+} = require('firebase/firestore');
 
 // Get all users (admin only) or filter by email
 router.get('/', async (req, res) => {
@@ -85,6 +95,18 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error getting user:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test Firebase connection
+router.get('/test-firebase', async (req, res) => {
+  try {
+    const testRef = doc(db, 'test', 'connection');
+    await setDoc(testRef, { test: 'success', timestamp: new Date().toISOString() });
+    res.json({ success: true, message: 'Firebase connection successful' });
+  } catch (error) {
+    console.error('Firebase test error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
