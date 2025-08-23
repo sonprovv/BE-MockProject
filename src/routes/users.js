@@ -3,21 +3,38 @@ const router = express.Router();
 const { db } = require('../config/firebase-config');
 const { collection, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where } = require('firebase/firestore');
 
-// Get all users (admin only)
+// Get all users (admin only) or filter by email
 router.get('/', async (req, res) => {
   try {
+    const { email } = req.query;
     const usersRef = collection(db, 'users');
-    const snapshot = await getDocs(usersRef);
-    const users = [];
+    let querySnapshot;
+
+    if (email) {
+      // If email is provided, search by email
+      const q = query(usersRef, where('email', '==', email));
+      querySnapshot = await getDocs(q);
+    } else {
+      // If no email, check if admin and return all users
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Not authorized' });
+      }
+      querySnapshot = await getDocs(usersRef);
+    }
     
-    snapshot.forEach((doc) => {
+    const users = [];
+    querySnapshot.forEach((doc) => {
       const user = doc.data();
       // Don't include sensitive information
       delete user.password;
       users.push({ id: doc.id, ...user });
     });
     
-    res.json(users);
+    if (email && users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(email ? users[0] : users);
   } catch (error) {
     console.error('Error getting users:', error);
     res.status(500).json({ error: 'Internal server error' });
