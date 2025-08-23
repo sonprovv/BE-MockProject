@@ -191,7 +191,7 @@ server.post('/register', async (req, res) => {
     user: {
       id: newUser.id,
       email: newUser.email,
-      name: newUser.name,
+      fullname: newUser.fullname,
       role: newUser.role
     }
   });
