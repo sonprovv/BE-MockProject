@@ -91,16 +91,24 @@ router.get('/:id', async (req, res) => {
 // Update user
 router.put('/:id', async (req, res) => {
   try {
+    console.log('=== UPDATE USER REQUEST ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const userId = req.params.id;
+    console.log('User ID to update:', userId);
+    
     const { fullname, email, role } = req.body;
     
     // Get the user document to check email
+    console.log('Fetching user document...');
     const userDoc = await getDoc(doc(db, 'users', userId));
     if (!userDoc.exists()) {
+      console.log('User not found in database');
       return res.status(404).json({ error: 'User not found' });
     }
     
     const userData = userDoc.data();
+    console.log('Current user data:', JSON.stringify(userData, null, 2));
     
     // Only allow users to update their own profile or admin to update any profile
     const currentUserId = req.user.id || req.user.sub;
@@ -125,22 +133,48 @@ router.put('/:id', async (req, res) => {
     }
     
     const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
+    const updateData = {
       fullname: fullname || userData.fullname,
       email: email || userData.email,
       ...(req.user.role === 'admin' && role ? { role } : {}), // Only allow admin to update role
       updatedAt: new Date().toISOString()
-    });
-
-    const updatedUser = (await getDoc(userRef)).data();
+    };
     
-    // Don't send password hash in response
-    delete updatedUser.password;
+    console.log('Attempting to update with data:', JSON.stringify(updateData, null, 2));
     
-    res.json({ id: userId, ...updatedUser });
+    try {
+      await updateDoc(userRef, updateData);
+      console.log('Successfully updated user in Firebase');
+      
+      // Verify the update
+      const updatedDoc = await getDoc(userRef);
+      if (!updatedDoc.exists()) {
+        console.error('Failed to verify update - document not found after update');
+        return res.status(500).json({ error: 'Failed to verify update' });
+      }
+      
+      const updatedUser = updatedDoc.data();
+      console.log('Updated user data:', JSON.stringify(updatedUser, null, 2));
+      
+      // Don't send password hash in response
+      delete updatedUser.password;
+      
+      res.json({ 
+        success: true,
+        message: 'User updated successfully',
+        user: { id: userId, ...updatedUser } 
+      });
+    } catch (updateError) {
+      console.error('Firebase update error:', updateError);
+      throw new Error(`Failed to update user: ${updateError.message}`);
+    }
   } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error in user update route:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
