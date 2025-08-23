@@ -171,16 +171,27 @@ router.get('/test-firebase', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     console.log('=== UPDATE USER REQUEST ===');
+    console.log('Request URL:', req.originalUrl);
+    console.log('Request method:', req.method);
+    console.log('Request headers:', JSON.stringify(req.headers, null, 2));
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     
-    const userId = req.params.id;
-    console.log('User ID to update:', userId);
+    // Make sure we have a valid user ID
+    const userId = String(req.params.id).trim();
+    if (!userId) {
+      console.error('No user ID provided');
+      return res.status(400).json({ success: false, error: 'User ID is required' });
+    }
+    
+    console.log('Processing update for user ID:', userId);
     
     // Get all fields from request body
     const { fullname, email, phone, role, ...otherFields } = req.body;
     
     // Log all received fields
-    console.log('Received update fields:', {
+    console.log('=== REQUEST BODY FIELDS ===');
+    console.log('Full request body:', JSON.stringify(req.body, null, 2));
+    console.log('Extracted fields:', {
       fullname,
       email,
       phone,
@@ -188,61 +199,107 @@ router.put('/:id', async (req, res) => {
       otherFields
     });
     
-    // Get the user document to check email
-    console.log('Fetching user document...');
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    // Get user reference
+    const userRef = doc(db, 'users', userId);
+    console.log('User reference:', userRef.path);
+    
+    // Get current user data
+    console.log('Fetching current user data...');
+    const userDoc = await getDoc(userRef);
+    
     if (!userDoc.exists()) {
-      console.log('User not found in database');
-      return res.status(404).json({ error: 'User not found' });
+      console.error('User document does not exist:', userId);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User not found' 
+      });
     }
     
-    const userData = userDoc.data();
-    console.log('Current user data:', JSON.stringify(userData, null, 2));
+    const currentData = userDoc.data();
+    console.log('Current user data:', JSON.stringify(currentData, null, 2));
     
-    // Only allow users to update their own profile or admin to update any profile
+    // Check authorization
     const currentUserId = req.user.id || req.user.sub;
     const currentUserEmail = req.user.email;
     
-    // Check if current user is the owner of the profile or an admin
-    if (currentUserId !== userId && 
-        currentUserEmail !== userData.email && 
-        req.user.role !== 'admin') {
-      console.log('User not authorized to update this profile:', { 
-        currentUserId, 
-        targetUserId: userId, 
-        isAdmin: req.user.role === 'admin' 
-      });
-      return res.status(403).json({ 
-        error: 'Not authorized to update this profile',
+    if (currentUserId !== userId && currentUserEmail !== currentData.email && req.user.role !== 'admin') {
+      console.error('Unauthorized update attempt:', {
         currentUserId,
         currentUserEmail,
         targetUserId: userId,
-        targetUserEmail: userData.email
+        targetUserEmail: currentData.email,
+        isAdmin: req.user.role === 'admin'
+      });
+      return res.status(403).json({ 
+        success: false,
+        error: 'Not authorized to update this profile'
       });
     }
     
-    const userRef = doc(db, 'users', userId);
-    
-    // Log the complete request for debugging
-    console.log('=== FULL REQUEST DETAILS ===');
-    console.log('Request URL:', req.originalUrl);
-    console.log('Request Method:', req.method);
-    console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
-    console.log('Request Body:', JSON.stringify(req.body, null, 2));
-    console.log('User making request:', {
-      id: req.user.id || req.user.sub,
-      email: req.user.email,
-      role: req.user.role
-    });
-    
-    // Create update data with all provided fields
+    // Prepare update data
     const updateData = {
       ...(fullname !== undefined && { fullname }),
       ...(email !== undefined && { email }),
-      ...(phone !== undefined && { phone }), // Include phone if provided
-      ...(req.user.role === 'admin' && role !== undefined && { role }), // Only admin can update role
+      ...(phone !== undefined && { phone }),
+      ...(role !== undefined && req.user.role === 'admin' && { role }),
+      ...otherFields, // Include any other fields that were passed
       updatedAt: new Date().toISOString()
     };
+    
+    console.log('Prepared update data:', JSON.stringify(updateData, null, 2));
+    
+    // Only proceed if there are fields to update (more than just updatedAt)
+    if (Object.keys(updateData).filter(k => k !== 'updatedAt').length === 0) {
+      console.warn('No valid fields to update');
+      return res.status(400).json({
+        success: false,
+        error: 'No valid fields provided for update'
+      });
+    }
+    
+    console.log('Attempting to update user document...');
+    try {
+      // First try with updateDoc
+      console.log('Trying updateDoc...');
+      await updateDoc(userRef, updateData);
+      console.log('Successfully updated using updateDoc');
+    } catch (updateError) {
+      console.warn('updateDoc failed, trying setDoc with merge...', updateError);
+      try {
+        await setDoc(userRef, updateData, { merge: true });
+        console.log('Successfully updated using setDoc with merge');
+      } catch (setDocError) {
+        console.error('Both update methods failed:', setDocError);
+        return res.status(500).json({
+          success: false,
+          error: `Failed to update user: ${setDocError.message}`
+        });
+      }
+    }
+    
+    // Verify the update
+    console.log('Verifying update...');
+    const updatedDoc = await getDoc(userRef);
+    if (!updatedDoc.exists()) {
+      console.error('Failed to verify update - document not found after update');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Failed to verify update' 
+      });
+    }
+    
+    const updatedData = updatedDoc.data();
+    console.log('Updated user data:', JSON.stringify(updatedData, null, 2));
+    
+    // Remove sensitive data from response
+    delete updatedData.password;
+    
+    console.log('Update successful');
+    return res.json({
+      success: true,
+      message: 'User updated successfully',
+      user: { id: userId, ...updatedData }
+    });
     
     console.log('=== UPDATE OPERATION ===');
     console.log('Document ID to update:', userId);
