@@ -166,6 +166,18 @@ router.put('/:id', async (req, res) => {
     
     const userRef = doc(db, 'users', userId);
     
+    // Log the complete request for debugging
+    console.log('=== FULL REQUEST DETAILS ===');
+    console.log('Request URL:', req.originalUrl);
+    console.log('Request Method:', req.method);
+    console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+    console.log('User making request:', {
+      id: req.user.id || req.user.sub,
+      email: req.user.email,
+      role: req.user.role
+    });
+    
     // Create update data with all provided fields
     const updateData = {
       ...(fullname !== undefined && { fullname }),
@@ -175,34 +187,51 @@ router.put('/:id', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
-    console.log('Prepared update data:', JSON.stringify(updateData, null, 2));
+    console.log('=== UPDATE OPERATION ===');
+    console.log('Document ID to update:', userId);
+    console.log('Update data to apply:', JSON.stringify(updateData, null, 2));
     
     try {
-      console.log('Attempting to update document with ID:', userId);
-      console.log('Update data being sent to Firebase:', updateData);
+      // Get the current document first
+      console.log('Fetching current document from Firestore...');
       
       // Get the current document to ensure it exists
       const currentDoc = await getDoc(userRef);
       if (!currentDoc.exists()) {
-        console.error('Document does not exist:', userId);
+        console.error('❌ Document does not exist:', userId);
         return res.status(404).json({ 
           success: false,
           error: 'User not found' 
         });
       }
       
-      // Log the current document data
-      console.log('Current document data:', currentDoc.data());
+      const currentData = currentDoc.data();
+      console.log('📄 Current document data:', JSON.stringify(currentData, null, 2));
       
-      // Perform the update using setDoc with merge: true
-      // This will create the document if it doesn't exist, or merge with existing data if it does
-      await setDoc(userRef, updateData, { merge: true });
-      console.log('Successfully updated user in Firebase');
+      // Log the update operation details
+      console.log('🔄 Attempting to update document with data:', JSON.stringify(updateData, null, 2));
       
-      // Verify the update by getting the document again
+      try {
+        // First try with updateDoc
+        console.log('1️⃣ Trying updateDoc...');
+        await updateDoc(userRef, updateData);
+        console.log('✅ Successfully updated using updateDoc');
+      } catch (updateError) {
+        console.warn('⚠️ updateDoc failed, trying setDoc with merge...', updateError);
+        try {
+          // If updateDoc fails, try setDoc with merge
+          await setDoc(userRef, updateData, { merge: true });
+          console.log('✅ Successfully updated using setDoc with merge');
+        } catch (setDocError) {
+          console.error('❌ Both update methods failed:', setDocError);
+          throw new Error(`Failed to update document: ${setDocError.message}`);
+        }
+      }
+      
+      console.log('🔍 Verifying update...');
       const updatedDoc = await getDoc(userRef);
       if (!updatedDoc.exists()) {
-        console.error('Failed to verify update - document not found after update');
+        console.error('❌ Failed to verify update - document not found after update');
         return res.status(500).json({ 
           success: false,
           error: 'Failed to verify update' 
