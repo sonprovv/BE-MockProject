@@ -119,7 +119,17 @@ router.put('/:id', async (req, res) => {
     const userId = req.params.id;
     console.log('User ID to update:', userId);
     
-    const { fullname, email, role } = req.body;
+    // Get all fields from request body
+    const { fullname, email, phone, role, ...otherFields } = req.body;
+    
+    // Log all received fields
+    console.log('Received update fields:', {
+      fullname,
+      email,
+      phone,
+      role,
+      otherFields
+    });
     
     // Get the user document to check email
     console.log('Fetching user document...');
@@ -156,20 +166,33 @@ router.put('/:id', async (req, res) => {
     
     const userRef = doc(db, 'users', userId);
     
-    // Create update data from request body, only including allowed fields
+    // Create update data with all provided fields
     const updateData = {
-      ...(fullname && { fullname }),
-      ...(email && { email }),
-      ...(req.body.phone && { phone: req.body.phone }), // Add phone field if present
-      ...(req.user.role === 'admin' && role && { role }), // Only allow admin to update role
+      ...(fullname !== undefined && { fullname }),
+      ...(email !== undefined && { email }),
+      ...(phone !== undefined && { phone }), // Include phone if provided
+      ...(req.user.role === 'admin' && role !== undefined && { role }), // Only admin can update role
       updatedAt: new Date().toISOString()
     };
+    
+    console.log('Prepared update data:', JSON.stringify(updateData, null, 2));
     
     console.log('Final update data:', JSON.stringify(updateData, null, 2));
     
     console.log('Attempting to update with data:', JSON.stringify(updateData, null, 2));
     
     try {
+      console.log('Attempting to update document with ID:', userId);
+      console.log('Update data being sent to Firebase:', updateData);
+      
+      // First, get the current document to ensure it exists
+      const currentDoc = await getDoc(userRef);
+      if (!currentDoc.exists()) {
+        console.error('Document does not exist:', userId);
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Perform the update
       await updateDoc(userRef, updateData);
       console.log('Successfully updated user in Firebase');
       
@@ -179,6 +202,9 @@ router.put('/:id', async (req, res) => {
         console.error('Failed to verify update - document not found after update');
         return res.status(500).json({ error: 'Failed to verify update' });
       }
+      
+      const updatedData = updatedDoc.data();
+      console.log('Successfully verified update. New data:', JSON.stringify(updatedData, null, 2));
       
       const updatedUser = updatedDoc.data();
       console.log('Updated user data:', JSON.stringify(updatedUser, null, 2));
