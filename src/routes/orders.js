@@ -6,21 +6,25 @@ const { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, where } = re
 // Get all orders (admin) or user's orders
 router.get('/', async (req, res) => {
   try {
-    const { userId, status } = req.query;
+    const { userId: queryUserId, status } = req.query;
     const ordersRef = collection(db, 'orders');
     let q;
 
     // If no user is authenticated
-    if (!req.user || !req.user.id) {
+    if (!req.user || (!req.user.id && !req.user.sub)) {
+      console.log('No user ID found in JWT token:', req.user);
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    const userId = req.user.id || req.user.sub;
+    console.log('User ID from token:', userId);
+
     // If not admin, only return user's orders
     if (req.user.role !== 'admin') {
-      q = query(ordersRef, where('userId', '==', req.user.id));
-    } else if (userId) {
-      // Admin can filter by user ID
       q = query(ordersRef, where('userId', '==', userId));
+    } else if (queryUserId) {
+      // Admin can filter by user ID
+      q = query(ordersRef, where('userId', '==', queryUserId));
     } else {
       // Admin without userId filter - get all orders
       q = ordersRef;
@@ -75,7 +79,8 @@ router.get('/:id', async (req, res) => {
     const order = orderSnap.data();
     
     // Check if user is authorized to view this order
-    if (req.user.role !== 'admin' && order.userId !== req.user.id) {
+    const userId = req.user.id || req.user.sub;
+    if (req.user.role !== 'admin' && order.userId !== userId) {
       return res.status(403).json({ error: 'Not authorized to view this order' });
     }
     
