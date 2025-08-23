@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { db } = require('./config/firebase-config');
 const booksRouter = require('./routes/books');
+const usersRouter = require('./routes/users');
+const ordersRouter = require('./routes/orders');
 const { 
   collection, 
   addDoc, 
@@ -74,8 +76,10 @@ const verifyToken = (req, res, next) => {
 // Apply token verification
 server.use(verifyToken);
 
-// Mount books router
-server.use('/books', booksRouter);
+// Mount routers
+server.use('/api/books', booksRouter);
+server.use('/api/users', usersRouter);
+server.use('/api/orders', ordersRouter);
 
 // Auth middleware for protected routes
 const requireAuth = (req, res, next) => {
