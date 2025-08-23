@@ -133,12 +133,17 @@ router.put('/:id', async (req, res) => {
     }
     
     const userRef = doc(db, 'users', userId);
+    
+    // Create update data from request body, only including allowed fields
     const updateData = {
-      fullname: fullname || userData.fullname,
-      email: email || userData.email,
-      ...(req.user.role === 'admin' && role ? { role } : {}), // Only allow admin to update role
+      ...(fullname && { fullname }),
+      ...(email && { email }),
+      ...(req.body.phone && { phone: req.body.phone }), // Add phone field if present
+      ...(req.user.role === 'admin' && role && { role }), // Only allow admin to update role
       updatedAt: new Date().toISOString()
     };
+    
+    console.log('Final update data:', JSON.stringify(updateData, null, 2));
     
     console.log('Attempting to update with data:', JSON.stringify(updateData, null, 2));
     
