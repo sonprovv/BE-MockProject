@@ -75,7 +75,7 @@ const verifyToken = (req, res, next) => {
 server.use(verifyToken);
 
 // Mount books router
-server.use('/api/books', booksRouter);
+server.use('/books', booksRouter);
 
 // Auth middleware for protected routes
 const requireAuth = (req, res, next) => {
