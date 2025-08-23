@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { db } = require('./config/firebase-config');
+const booksRouter = require('./routes/books');
 const { 
   collection, 
   addDoc, 
@@ -72,6 +73,9 @@ const verifyToken = (req, res, next) => {
 
 // Apply token verification
 server.use(verifyToken);
+
+// Mount books router
+server.use('/api/books', booksRouter);
 
 // Auth middleware for protected routes
 const requireAuth = (req, res, next) => {
