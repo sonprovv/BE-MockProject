@@ -77,9 +77,9 @@ const verifyToken = (req, res, next) => {
 server.use(verifyToken);
 
 // Mount routers
-server.use('/api/books', booksRouter);
-server.use('/api/users', usersRouter);
-server.use('/api/orders', ordersRouter);
+server.use('/books', booksRouter);
+server.use('/users', usersRouter);
+server.use('/orders', ordersRouter);
 
 // Auth middleware for protected routes
 const requireAuth = (req, res, next) => {
