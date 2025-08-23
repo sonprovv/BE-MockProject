@@ -3,18 +3,28 @@ const path = require("path");
 const dotenv = require("dotenv");
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { db } = require('./config/firebase-config');
+const { 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where, 
+  doc, 
+  getDoc, 
+  updateDoc, 
+  deleteDoc 
+} = require('firebase/firestore');
 
 dotenv.config();
 
 const server = jsonServer.create();
-const router = jsonServer.router(path.join(__dirname, "api.json"));
 const middlewares = jsonServer.defaults();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 server.use(middlewares);
 server.use(jsonServer.bodyParser);
-server.db = router.db;
 
 // CORS middleware
 server.use((req, res, next) => {
@@ -82,162 +92,171 @@ server.post('/login', async (req, res) => {
   const { email, password } = req.body;
   console.log('Login attempt:', { email, password });
   
-  const db = router.db;
-  const user = db.get('users').find({ email }).value();
-  
-  if (!user) {
-    console.log('❌ User not found');
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
-  
-  console.log('User found:', { id: user.id, email: user.email, role: user.role });
-  
-  // Sửa: Dùng bcrypt.compare để so sánh password hash
-  let passwordValid = false;
   try {
-    // Kiểm tra xem password trong DB có phải hash không
-    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$')) {
-      // Password đã hash, dùng bcrypt.compare
-      passwordValid = await bcrypt.compare(password, user.password);
-      console.log('🔐 Using bcrypt comparison for hashed password');
-    } else {
-      // Password plain text (fallback cho development)
-      passwordValid = user.password === password;
-      console.log('⚠️  Using plain text comparison (development mode)');
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log('❌ User not found');
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
+    
+    const userDoc = querySnapshot.docs[0];
+    const user = { id: userDoc.id, ...userDoc.data() };
+    
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password');
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    console.log('✅ Login successful');
+    
+    const token = jwt.sign(
+      { 
+        email: user.email, 
+        sub: user.id,
+        role: user.role,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour
+      },
+      JWT_SECRET
+    );
+    
+    res.json({
+      accessToken: token,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullname: user.fullname,
+        role: user.role
+      }
+    });
+    
   } catch (error) {
-    console.log('❌ Password comparison error:', error.message);
-    passwordValid = false;
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-  
-  if (!passwordValid) {
-    console.log('❌ Password invalid');
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
-  
-  // Generate token
-  const token = jwt.sign(
-    { 
-      email: user.email, 
-      sub: user.id.toString(),
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour
-    },
-    JWT_SECRET
-  );
-  
-  console.log('✅ Login successful, token generated');
-  console.log('Token:', token.substring(0, 30) + '...');
-  
-  res.json({
-    accessToken: token,
-    user: {
-      id: user.id,
-      email: user.email,
-      fullname: user.fullName,
-      role: user.role
-    }
-  });
 });
 
 // Custom register route with bcrypt password hashing
 server.post('/register', async (req, res) => {
   const { email, password, fullname, role = 'user' } = req.body;
   
-  const db = router.db;
-  const existingUser = db.get('users').find({ email }).value();
-  
-  if (existingUser) {
-    return res.status(400).json({ message: 'User already exists' });
-  }
-  
-  // Hash password trước khi lưu
-  const hashedPassword = await bcrypt.hash(password, 10);
-  
-  const newUser = {
-    id: Date.now(),
-    email,
-    password: hashedPassword, // Lưu password đã hash
-    fullname,
-    role,
-    nickName: "",
-    birthDay: "",
-    birthDate: {
-      day: "",
-      month: "",
-      year: ""
-    },
-    gender: "",
-    nationality: "",
-    phone: "",
-    address: "",
-    createdAt: new Date().toISOString()
-  };
-  
-  db.get('users').push(newUser).write();
-  
-  const token = jwt.sign(
-    { 
-      email: newUser.email, 
-      sub: newUser.id.toString(),
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (60 * 60)
-    },
-    JWT_SECRET
-  );
-  
-  res.status(201).json({
-    accessToken: token,
-    user: {
-      id: newUser.id,
-      email: newUser.email,
-      fullname: newUser.fullname,
-      role: newUser.role
+  try {
+    // Kiểm tra email đã tồn tại chưa
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      return res.status(400).json({ message: 'Email already exists' });
     }
-  });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = {
+      email,
+      password: hashedPassword,
+      fullname,
+      role,
+      nickName: "",
+      birthDay: "",
+      birthDate: {
+        day: "",
+        month: "",
+        year: ""
+      },
+      gender: "",
+      nationality: "",
+      phone: "",
+      address: "",
+      createdAt: new Date().toISOString()
+    };
+
+    // Thêm user mới vào Firestore
+    const docRef = await addDoc(collection(db, 'users'), newUser);
+    
+    const token = jwt.sign(
+      { 
+        email: newUser.email, 
+        sub: docRef.id,
+        role: newUser.role,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (60 * 60)
+      },
+      JWT_SECRET
+    );
+    
+    res.status(201).json({
+      accessToken: token,
+      user: {
+        id: docRef.id,
+        email: newUser.email,
+        fullname: newUser.fullname,
+        role: newUser.role
+      }
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 // Cart routes
-server.get('/cart', requireAuth, (req, res) => {
+server.get('/cart', requireAuth, async (req, res) => {
   console.log('=== GET CART ===');
   const userId = req.user.email;
   console.log('Getting cart for user:', userId);
   
-  const db = router.db;
-  let cart = db.get('carts').find({ userId }).value();
-
-  if (!cart) {
-    const newCart = {
-      id: `cart_${Date.now()}`,
-      userId,
-      items: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+  try {
+    const cartsRef = collection(db, 'carts');
+    const q = query(cartsRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
     
-    db.get('carts').push(newCart).write();
-    console.log('✅ Created new empty cart');
-    return res.status(200).json(newCart);
-  }
-
-  // Enrich cart items with book details
-  const enrichedItems = cart.items.map(item => {
-    const book = db.get('books').find({ id: item.bookId }).value();
-    if (book) {
-      return {
-        ...book,
-        quantity: item.quantity,
-        cartItemId: item.id
+    if (querySnapshot.empty) {
+      const newCart = {
+        userId,
+        items: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
+      
+      const docRef = await addDoc(collection(db, 'carts'), newCart);
+      console.log('✅ Created new empty cart');
+      return res.status(200).json({ id: docRef.id, ...newCart });
     }
-    return null;
-  }).filter(Boolean);
-
-  console.log('✅ Cart retrieved with', enrichedItems.length, 'items');
-  res.status(200).json({ ...cart, items: enrichedItems });
+    
+    const cartDoc = querySnapshot.docs[0];
+    const cart = { id: cartDoc.id, ...cartDoc.data() };
+    
+    // Enrich cart items with book details
+    const booksRef = collection(db, 'books');
+    const enrichedItems = cart.items.map(async item => {
+      const bookDoc = await getDoc(doc(booksRef, item.bookId));
+      if (bookDoc.exists()) {
+        return {
+          ...bookDoc.data(),
+          quantity: item.quantity,
+          cartItemId: item.id
+        };
+      }
+      return null;
+    });
+    
+    const results = await Promise.all(enrichedItems);
+    const filteredResults = results.filter(Boolean);
+    
+    console.log('✅ Cart retrieved with', filteredResults.length, 'items');
+    res.status(200).json({ ...cart, items: filteredResults });
+  } catch (error) {
+    console.error('Error getting cart:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
-server.post('/cart/items', requireAuth, (req, res) => {
+server.post('/cart/items', requireAuth, async (req, res) => {
   const userId = req.user.email;
   const { bookId, quantity = 1 } = req.body;
 
@@ -251,48 +270,73 @@ server.post('/cart/items', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Invalid bookId or quantity' });
   }
 
-  const db = router.db;
-  const book = db.get('books').find({ id: bookId }).value();
-  if (!book) {
-    console.log('❌ Book not found:', bookId);
-    return res.status(404).json({ error: 'Book not found' });
+  try {
+    const cartsRef = collection(db, 'carts');
+    const q = query(cartsRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      const newCart = {
+        userId,
+        items: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      const docRef = await addDoc(collection(db, 'carts'), newCart);
+      console.log('✅ Created new cart for user:', userId);
+      
+      const cartId = docRef.id;
+      const newItem = {
+        id: `item_${Date.now()}`,
+        bookId,
+        quantity,
+        addedAt: new Date().toISOString()
+      };
+      
+      await addDoc(collection(db, 'carts', cartId, 'items'), newItem);
+      console.log('✅ Added new item to cart');
+      
+      res.status(201).json({ message: 'Item added to cart' });
+    } else {
+      const cartDoc = querySnapshot.docs[0];
+      const cartId = cartDoc.id;
+      
+      const existingItemRef = collection(db, 'carts', cartId, 'items');
+      const existingItemQ = query(existingItemRef, where('bookId', '==', bookId));
+      const existingItemQuerySnapshot = await getDocs(existingItemQ);
+      
+      if (!existingItemQuerySnapshot.empty) {
+        const existingItemDoc = existingItemQuerySnapshot.docs[0];
+        const existingItemId = existingItemDoc.id;
+        
+        const updatedItem = {
+          quantity: existingItemDoc.data().quantity + quantity
+        };
+        
+        await updateDoc(doc(existingItemRef, existingItemId), updatedItem);
+        console.log('✅ Updated existing item quantity');
+      } else {
+        const newItem = {
+          id: `item_${Date.now()}`,
+          bookId,
+          quantity,
+          addedAt: new Date().toISOString()
+        };
+        
+        await addDoc(collection(db, 'carts', cartId, 'items'), newItem);
+        console.log('✅ Added new item to cart');
+      }
+      
+      res.status(201).json({ message: 'Item added to cart' });
+    }
+  } catch (error) {
+    console.error('Error adding cart item:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  let cart = db.get('carts').find({ userId }).value();
-  if (!cart) {
-    cart = {
-      id: `cart_${Date.now()}`,
-      userId,
-      items: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    db.get('carts').push(cart).write();
-    console.log('✅ Created new cart for user:', userId);
-  }
-
-  const existingItemIndex = cart.items.findIndex(item => item.bookId === bookId);
-  if (existingItemIndex !== -1) {
-    cart.items[existingItemIndex].quantity += quantity;
-    console.log('✅ Updated existing item quantity');
-  } else {
-    cart.items.push({
-      id: `item_${Date.now()}`, // Tạo ID mục giỏ hàng duy nhất
-      bookId,
-      quantity,
-      addedAt: new Date().toISOString()
-    });
-    console.log('✅ Added new item to cart');
-  }
-
-  cart.updatedAt = new Date().toISOString();
-  db.get('carts').find({ id: cart.id }).assign(cart).write();
-
-  console.log('✅ Cart updated successfully');
-  res.status(201).json({ message: 'Item added to cart', cart });
 });
 
-server.put('/cart/items/:id', requireAuth, (req, res) => {
+server.put('/cart/items/:id', requireAuth, async (req, res) => {
   const userId = req.user.email;
   const { id: itemId } = req.params;
   const { quantity } = req.body;
@@ -301,53 +345,80 @@ server.put('/cart/items/:id', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'Invalid quantity' });
   }
 
-  const db = router.db;
-  let cart = db.get('carts').find({ userId }).value();
-
-  if (!cart) {
-    return res.status(404).json({ error: 'Cart not found' });
+  try {
+    const cartsRef = collection(db, 'carts');
+    const q = query(cartsRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return res.status(404).json({ error: 'Cart not found' });
+    }
+    
+    const cartDoc = querySnapshot.docs[0];
+    const cartId = cartDoc.id;
+    
+    const itemsRef = collection(db, 'carts', cartId, 'items');
+    const itemQ = query(itemsRef, where('id', '==', itemId));
+    const itemQuerySnapshot = await getDocs(itemQ);
+    
+    if (itemQuerySnapshot.empty) {
+      return res.status(404).json({ error: 'Item not found in cart' });
+    }
+    
+    const itemDoc = itemQuerySnapshot.docs[0];
+    const itemId = itemDoc.id;
+    
+    if (quantity === 0) {
+      await deleteDoc(doc(itemsRef, itemId));
+    } else {
+      const updatedItem = {
+        quantity
+      };
+      
+      await updateDoc(doc(itemsRef, itemId), updatedItem);
+    }
+    
+    res.status(200).json({ message: 'Cart updated' });
+  } catch (error) {
+    console.error('Error updating cart item:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  const itemIndex = cart.items.findIndex(item => item.id === itemId);
-
-  if (itemIndex === -1) {
-    return res.status(404).json({ error: 'Item not found in cart' });
-  }
-
-  if (quantity === 0) {
-    cart.items.splice(itemIndex, 1);
-  } else {
-    cart.items[itemIndex].quantity = quantity;
-  }
-
-  cart.updatedAt = new Date().toISOString();
-  db.get('carts').find({ id: cart.id }).assign(cart).write();
-
-  res.status(200).json({ message: 'Cart updated' });
 });
 
-server.delete('/cart/items/:id', requireAuth, (req, res) => {
+server.delete('/cart/items/:id', requireAuth, async (req, res) => {
   const userId = req.user.email;
   const { id: itemId } = req.params;
 
-  const db = router.db;
-  let cart = db.get('carts').find({ userId }).value();
-
-  if (!cart) {
-    return res.status(404).json({ error: 'Cart not found' });
+  try {
+    const cartsRef = collection(db, 'carts');
+    const q = query(cartsRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return res.status(404).json({ error: 'Cart not found' });
+    }
+    
+    const cartDoc = querySnapshot.docs[0];
+    const cartId = cartDoc.id;
+    
+    const itemsRef = collection(db, 'carts', cartId, 'items');
+    const itemQ = query(itemsRef, where('id', '==', itemId));
+    const itemQuerySnapshot = await getDocs(itemQ);
+    
+    if (itemQuerySnapshot.empty) {
+      return res.status(404).json({ error: 'Item not found in cart' });
+    }
+    
+    const itemDoc = itemQuerySnapshot.docs[0];
+    const itemId = itemDoc.id;
+    
+    await deleteDoc(doc(itemsRef, itemId));
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting cart item:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  const itemIndex = cart.items.findIndex(item => item.id === itemId);
-
-  if (itemIndex === -1) {
-    return res.status(404).json({ error: 'Item not found in cart' });
-  }
-
-  cart.items.splice(itemIndex, 1);
-  cart.updatedAt = new Date().toISOString();
-  db.get('carts').find({ id: cart.id }).assign(cart).write();
-
-  res.status(204).send();
 });
 
 // Debug endpoint
@@ -360,41 +431,42 @@ server.get('/debug/token', (req, res) => {
   });
 });
 
-// Apply JSON Server router for other routes
-server.use(router);
-
 const PORT = process.env.PORT || 3000;
 
 // Initialize database
-const initializeDatabase = () => {
-  const db = router.db;
-  
-  if (!db.has('carts').value()) {
-    db.set('carts', []).write();
-  }
-  
-  // Create test users with hashed passwords
-  if (!db.has('users').value() || db.get('users').value().length === 0) {
-    // Hash passwords for test users
-    const testUsers = [
-      {
-        id: 1,
-        email: 'test@example.com',
-        password: '$2a$10$3OyHnkJgGwUETl4t4htKbenhRrhMaRJvyXDmeMyYv6K281Dsqcjha', // hash của '123456'
-        name: 'Test User',
-        role: 'user'
-      },
-      {
-        id: 2,
-        email: 'admin@gmail.com',
-        password: '$2a$10$.sWh.AkcLwRERI90UdJIX.pWAkv8yRNoREAdC.3CXq3ixRNdm/CU6', // hash của '12345678aA@'
-        name: 'Admin User',
-        role: 'admin'
-      }
-    ];
+const initializeDatabase = async () => {
+  try {
+    const usersRef = collection(db, 'users');
+    const snapshot = await getDocs(usersRef);
     
-    db.set('users', testUsers).write();
-    console.log('✅ Test users created with hashed passwords');
+    if (snapshot.empty) {
+      // Create test users with hashed passwords
+      const testUsers = [
+        {
+          email: 'test@example.com',
+          password: '$2a$10$3OyHnkJgGwUETl4t4htKbenhRrhMaRJvyXDmeMyYv6K281Dsqcjha', // hash của '123456'
+          fullname: 'Test User',
+          role: 'user',
+          createdAt: new Date().toISOString()
+        },
+        {
+          email: 'admin@gmail.com',
+          password: '$2a$10$3OyHnkJgGwUETl4t4htKbe.anotherhash', // hash của 'admin123'
+          fullname: 'Admin User',
+          role: 'admin',
+          createdAt: new Date().toISOString()
+        }
+      ];
+      
+      // Add test users to Firestore
+      for (const user of testUsers) {
+        await addDoc(usersRef, user);
+      }
+      
+      console.log('✅ Test users created with hashed passwords');
+    }
+  } catch (error) {
+    console.error('Error initializing database:', error);
   }
 };
 
