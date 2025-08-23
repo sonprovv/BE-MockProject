@@ -13,6 +13,63 @@ const {
   where 
 } = require('firebase/firestore');
 
+// Test Firebase connection and permissions
+router.get('/test-update', async (req, res) => {
+  try {
+    const testId = 'test-user-' + Date.now();
+    const testRef = doc(db, 'users', testId);
+    
+    // Test write operation
+    const testData = {
+      email: 'test@example.com',
+      fullname: 'Test User',
+      phone: '123456789',
+      role: 'user',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    console.log('Testing write operation...');
+    await setDoc(testRef, testData);
+    console.log('Write test successful');
+    
+    // Test read operation
+    console.log('Testing read operation...');
+    const docSnap = await getDoc(testRef);
+    if (!docSnap.exists()) {
+      throw new Error('Failed to read test document');
+    }
+    console.log('Read test successful');
+    
+    // Test update operation
+    console.log('Testing update operation...');
+    await updateDoc(testRef, { phone: '987654321' });
+    console.log('Update test successful');
+    
+    // Clean up
+    console.log('Cleaning up test document...');
+    await deleteDoc(testRef);
+    
+    res.json({
+      success: true,
+      message: 'All Firebase operations completed successfully',
+      testData: {
+        ...testData,
+        id: testId,
+        phone: '987654321' // Updated value
+      }
+    });
+    
+  } catch (error) {
+    console.error('Firebase test error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
 // Get all users (admin only) or filter by email
 router.get('/', async (req, res) => {
   try {
